@@ -11,36 +11,12 @@ PAGE_TABLE = {
 
 class SchoolLoop(object):
 	def __init__ (self, subdomain):
-		class LoginHandler (urllib2.HTTPRedirectHandler, object):
-			def __init__ (self):
-				super(LoginHandler, self).__init__()
-				self.enabled = False
-			def redirect_request (self, *args):
-				if self.enabled:
-					if '/portal/login' in args[5]:
-						return urllib2.Request('login://fail')
-					else:
-						return urllib2.Request('login://success')
-				else:
-					return super(LoginHandler, self).redirect_request(*args)
-			def login_open (self, req):
-				return req.get_host()
-		
-		self.subdomain = subdomain
-		self.cache = {}
-		self.lrHandler = LoginHandler()
-		self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(), self.lrHandler)
-		self.pages = {}
-			
-	def get_url (self, path):
-		return 'https://%s.schoolloop.com%s' % (self.subdomain, path)
-		
-	def login (self, user, pswd):
 		"""
 		Initializes the SchoolLoop object.
 		
 		- subdomain: subdomain on Schoolloop website (https://<subdomain>.schoolloop.com/)
 		"""
+	
 		# schoolloop is so slow we can't waste time on unnecessary redirects
 		class LoginRedirectHandler (urllib2.HTTPRedirectHandler, object):
 			def __init__ (self):
@@ -56,7 +32,7 @@ class SchoolLoop(object):
 				elif self.mode == 2:
 					return urllib2.Request('lr:///%s' % urllib.quote (args[5]))
 				else:
-					return super(LoginHandler, self).redirect_request(*args)
+					return super(LoginRedirectHandler, self).redirect_request(*args)
 			def lr_open (self, req):
 				return req.get_selector()[1:]
 		
