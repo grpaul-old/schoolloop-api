@@ -145,8 +145,11 @@ class SchoolLoop(object):
 	def calendar(self, month=None, year=None):
 		"""
 		Returns a list of events in the monthly calendar.
+		Format: (date, id, course, description)
+		Note that course can be None.
 		
-		- month: i don't even know what this does.
+		- month: Month of events
+		- year: Year of events
 		"""
 		events = []
 		
