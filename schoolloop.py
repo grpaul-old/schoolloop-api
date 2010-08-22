@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import re, urllib, urllib2, time, sys, os
+import re, calendar, urllib, urllib2, time, sys, os
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
 
@@ -44,6 +44,8 @@ class SchoolLoop(object):
 		self.lrHandler = LoginRedirectHandler()
 		self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(), self.lrHandler)
 		self.pages = {}
+		
+		self.timezone = None
 			
 	def get_url (self, path):
 		"""
@@ -140,7 +142,7 @@ class SchoolLoop(object):
 			assignments.append((status, title, cls, date))
 		return assignments
 			
-	def calendar(self, year, month):
+	def calendar(self, month=None, year=None):
 		"""
 		Returns a list of events in the monthly calendar.
 		
@@ -156,45 +158,47 @@ class SchoolLoop(object):
 			self.lrHandler.mode = 0
 		
 		# stupid time zones
-		if not self.timezone:
-			soup = self.page('calendar').soup
-			
-			nowDate = int(soup.find('span', {'style': 'color : #AA0000;'}).string)
-			
-			nowTime = (lambda x: sum(x) / len(x))([int(re.search('month_id=(\d+)', y['href']).group(1))
-				for y in soup.findAll(lambda x: x.name == "a" and
-				x.has_key('href') and re.search('month_id=[^0]', x['href']))]) / 1000
-			
-			dt = datetime.utcfromtimestamp(nowTime)
+		if self.timezone is None:
+			dt = datetime.utcfromtimestamp((lambda x: sum(x) / len(x))(
+				[int(re.search('month_id=(\d+)', y['href']).group(1))
+				for y in self.page('calendar').soup.findAll(lambda x: x.name == "a" and
+				x.has_key('href') and re.search('month_id=[^0]', x['href']))]) / 1000)
 			
 			dst = False
 			if dt.month == 3:
 				# find the second sunday
-				sunday = datetime.datetime(dt.year, 3, 8)
+				sunday = datetime(dt.year, 3, 8)
 				while sunday.weekday () != 6:
 					sunday = sunday.replace (day = sunday.day + 1)
 				if dt.day > sunday.day:
 					dst = True
 			elif dt.month == 11:
 				# find the first sunday
-				sunday = datetime.datetime(dt.year, 11, 1)
+				sunday = datetime(dt.year, 11, 1)
 				while sunday.weekday () != 6:
 					sunday = sunday.replace (day = sunday.day + 1)
 				if dt.day <= sunday.day:
 					dst = True
-			elif month > 3 and month < 11:
+			elif dt.month > 3 and dt.month < 11:
 				dst = True
 			
 			self.timezone = -dt.hour
-			if dst: offset -= 1
+			if dst: self.timezone -= 1
 		
-		print self.timezone
-		
-		table = self.page('calendar').soup.find('table', {'class': 'cal_table'})
+		month_id = None
+		if year or month:
+			hour = -self.timezone
+			if month > 3 and month <= 11: # DST
+				hour -= 1
+			month_id = calendar.timegm(datetime(year, month, 1, hour, 0, 0).timetuple()) * 1000
+			
+		table = self.page('calendar', 'month_id=%d' % month_id if month_id else None).soup.find('table', {'class': 'cal_table'})
 		for td in table.findAll('td', {'class': 'cal_td'}):
 			dateSpan = td.find('span')
 			if (not dateSpan) or ('#888888' in dateSpan['style']):
 				continue
+		
+		print table
 		
 		return events
 		
@@ -262,7 +266,7 @@ def main(args):
 	
 	if options.classes: print s.class_list()
 	if options.dropbox: print s.dropbox_files()
-	if options.calendar: print s.calendar(0, 0)
+	if options.calendar: print s.calendar()
 	if options.assignments: print s.assignment_list()
 
 if __name__ == "__main__":
