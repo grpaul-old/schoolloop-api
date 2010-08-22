@@ -10,7 +10,7 @@ PAGE_TABLE = {
 }
 
 class SchoolLoop(object):
-	def __init__ (self, subdomain):
+	def __init__ (self, subdomain, https=True):
 		"""
 		Initializes the SchoolLoop object.
 		
@@ -36,6 +36,7 @@ class SchoolLoop(object):
 			def lr_open (self, req):
 				return req.get_selector()[1:]
 		
+		self.https = https
 		self.subdomain = subdomain
 		self.cache = {}
 		self.lrHandler = LoginRedirectHandler()
@@ -48,7 +49,7 @@ class SchoolLoop(object):
 		
 		- path: path to be converted to a URL
 		"""
-		return 'https://%s.schoolloop.com%s' % (self.subdomain, path)
+		return '%s://%s.schoolloop.com%s' % (self.https and 'https' or 'http', self.subdomain, path)
 		
 	def login (self, user, pswd):
 		"""
