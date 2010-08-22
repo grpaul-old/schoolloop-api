@@ -197,8 +197,20 @@ class SchoolLoop(object):
 			dateSpan = td.find('span')
 			if (not dateSpan) or ('#888888' in dateSpan['style']):
 				continue
-		
-		print table
+			date = int(dateSpan.string)
+			
+			for div in td.findAll('div', style='font-size: 10px; font-weight: bold;'):
+				a = div.a
+				if not a: continue
+				
+				id = a['id']
+				desc = a.string
+			
+				course = None
+				if div.b:
+					course = div.b.string
+				
+				events.append((id, course, desc))
 		
 		return events
 		
