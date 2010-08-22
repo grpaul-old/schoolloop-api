@@ -1,0 +1,5 @@
+- the time that the session is open is realllly short. i think we need
+  to check whether we've been logged out or not in each api method, and
+  store the username and password so we can re-login if we do get logged
+  out
+- ASK SCHOOLLOOP TO MAKE AN API
