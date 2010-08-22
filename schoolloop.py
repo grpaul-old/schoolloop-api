@@ -157,7 +157,7 @@ class SchoolLoopPage(object):
 		
 		self.soup = BeautifulSoup(pageData)
 
-if __name__ == "__main__":
+def main(args):
 	from optparse import OptionParser
 	from getpass import getpass
 	
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 		dest="dropbox",
 		default=False,
 		help="Print list of files in the dropbox.")
-	(options, args) = parser.parse_args()
+	(options, args) = parser.parse_args(args)
 
 	username, password = options.username, options.password
 	if not username: username = raw_input("Username: ")
@@ -196,3 +196,6 @@ if __name__ == "__main__":
 	if options.classes: print s.class_list()
 	if options.dropbox: print s.dropbox_files()
 	if options.calendar: print s.calendar(int(options.calendar))
+
+if __name__ == "__main__":
+	main(sys.argv[1:])
