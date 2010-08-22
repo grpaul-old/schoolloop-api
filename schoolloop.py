@@ -49,7 +49,7 @@ class SchoolLoop(object):
 		
 		- path: path to be converted to a URL
 		"""
-		return '%s://%s.schoolloop.com%s' % (self.https and 'https' or 'http', self.subdomain, path)
+		return '%s://%s.schoolloop.com%s' % ('https' if self.https else 'http', self.subdomain, path)
 		
 	def login (self, user, pswd):
 		"""
