@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
-import re, datetime, urllib, urllib2, time, sys, os
+import re, urllib, urllib2, time, sys, os
 from BeautifulSoup import BeautifulSoup
+from datetime import datetime
 
 PAGE_TABLE = {
 	'main' : '/portal/student_home',
@@ -113,7 +114,32 @@ class SchoolLoop(object):
 			
 			files.append((date, cls, assignment, file))
 		return files
-
+		
+	def assignment_list(self, class_filter=None):
+		"""
+		Returns a list of assignments, in the format: (state, title, class, due)
+		
+		- class_filter: a class tuple (id, name) to filter the assignments by.
+		"""
+		assignments = []
+		table = self.page('main').soup.find(lambda tag: tag.string and tag.string.find('Current Assignments') != -1,
+		 									{ 'class' : 'title' }).nextSibling.tbody
+		assert table != None
+		for row in table.findAll('tr'):
+			cells = row.findAll('td')
+			cells.pop(2); cells.pop(4)
+			
+			status = ('' if not cells[0].img else
+			         'new' if cells[0].img['src'] == "https://cdn.schoolloop.com/1008131238/img/new.gif" 
+			    else 'due' if cells[0].img['src'] == "https://cdn.schoolloop.com/1008131238/img/due.gif"
+			    else '')
+			title = (cells[1].div.a['href'], cells[1].div.a.string)
+			cls = cells[2].div.string; cls = cls[:cls.rfind("Period") - 1]
+			date = datetime.strptime(cells[3].div.string, '%m/%d/%y')
+			
+			assignments.append((status, title, cls, date))
+		return assignments
+			
 	def calendar(self, month):
 		"""
 		Returns a list of events in the monthly calendar.
@@ -139,18 +165,18 @@ class SchoolLoop(object):
 				for y in soup.findAll(lambda x: x.name == "a" and
 				x.has_key('href') and re.search('month_id=[^0]', x['href']))]) / 1000
 			
-			dt = datetime.datetime.utcfromtimestamp(nowTime)
+			dt = datetime.utcfromtimestamp(nowTime)
 			
 			# too lazy to think T_T
 			if nowDate < 15 and dt.day > 15:
 				nowYearMonth = (dt.year * 12) + dt.month + 1
 			elif nowDate > 15 and dt.day < 15:
 				nowYearMonth = (dt.year * 12) + dt.month - 1
-			else
+			else:
 				nowYearMonth = (dt.year * 12) + dt.month
 			nowYearMonth -= 1
 			
-			nowDt = datetime.datetime.new (nowYearMonth / 12, (nowYearMonth % 12) + 1, nowDate)
+			nowDt = datetime.new (nowYearMonth / 12, (nowYearMonth % 12) + 1, nowDate)
 		
 		table = self.page('calendar').soup.find('table', {'class': 'cal_table'})
 		for td in table.findAll('td', {'class': 'cal_td'}):
@@ -201,6 +227,16 @@ def main(args):
 		dest="dropbox",
 		default=False,
 		help="Print list of files in the dropbox.")
+	parser.add_option("-e", "--events",
+		action="store",
+		dest="calendar",
+		default=False,
+		help="Print calendar.")
+	parser.add_option("-a", "--assignments",
+		action="store_true",
+		dest="assignments",
+		default=False,
+		help="Print list of assignments.")
 	(options, args) = parser.parse_args(args)
 
 	username, password = options.username, options.password
@@ -210,10 +246,12 @@ def main(args):
 	s = SchoolLoop('lhs-sfusd-ca')
 	if not s.login(username, password):
 		print "error: unable to login"
+		sys.exit()
 	
 	if options.classes: print s.class_list()
 	if options.dropbox: print s.dropbox_files()
 	if options.calendar: print s.calendar(int(options.calendar))
+	if options.assignments: print s.assignment_list()
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
