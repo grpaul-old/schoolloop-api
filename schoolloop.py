@@ -114,7 +114,7 @@ class SchoolLoop(object):
 			files.append((date, cls, assignment, file))
 		return files
 
-	def calendar(self, month):
+	def calendar(self, year, month):
 		"""
 		Returns a list of events in the monthly calendar.
 		
@@ -141,16 +141,23 @@ class SchoolLoop(object):
 			
 			dt = datetime.datetime.utcfromtimestamp(nowTime)
 			
-			# too lazy to think T_T
-			if nowDate < 15 and dt.day > 15:
-				nowYearMonth = (dt.year * 12) + dt.month + 1
-			elif nowDate > 15 and dt.day < 15:
-				nowYearMonth = (dt.year * 12) + dt.month - 1
-			else
-				nowYearMonth = (dt.year * 12) + dt.month
-			nowYearMonth -= 1
-			
-			nowDt = datetime.datetime.new (nowYearMonth / 12, (nowYearMonth % 12) + 1, nowDate)
+			dst = False
+			if dt.month == 3:
+				# find the second sunday
+				sunday = datetime.datetime(dt.year, 3, 8)
+				while sunday.weekday () != 6:
+					sunday = sunday.replace (day = sunday.day + 1)
+				if dt.day > sunday.day:
+					dst = True
+			elif dt.month == 11:
+				# find the first sunday
+				sunday = datetime.datetime(dt.year, 11, 1)
+				while sunday.weekday () != 6:
+					sunday = sunday.replace (day = sunday.day + 1)
+				if dt.day <= sunday.day:
+					dst = True
+			elif month > 3 and month < 11:
+				dst = True
 		
 		table = self.page('calendar').soup.find('table', {'class': 'cal_table'})
 		for td in table.findAll('td', {'class': 'cal_td'}):
