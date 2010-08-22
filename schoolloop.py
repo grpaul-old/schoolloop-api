@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import re, urllib, urllib2, sys, os
+import re, datetime, urllib, urllib2, time, sys, os
 from BeautifulSoup import BeautifulSoup
 
 PAGE_TABLE = {
@@ -15,6 +15,7 @@ class SchoolLoop(object):
 		Initializes the SchoolLoop object.
 		
 		- subdomain: subdomain on Schoolloop website (https://<subdomain>.schoolloop.com/)
+		- https: set to False to disable https, enables debugging via Wireshark, etc.
 		"""
 	
 		# schoolloop is so slow we can't waste time on unnecessary redirects
@@ -66,16 +67,18 @@ class SchoolLoop(object):
 		
 		return loginTry == "success"
 		
-	def page(self, page):
+	def page(self, page, params=None):
 		"""
 		Fetches a page from Schoolloop, caches it, and returns a SchoolLoopPage object.
 		
 		- page: page keyword (see PAGE_TABLE)
+		- params: GET params
 		"""
-		if self.pages.has_key(page): return self.pages[page]
-		self.pages[page] = SchoolLoopPage(self, PAGE_TABLE[page])
-		self.pages[page].load()
-		return self.pages[page]
+		key = (page, params)
+		if key in self.pages: return self.pages[key]
+		self.pages[key] = SchoolLoopPage(self, PAGE_TABLE[page], params)
+		self.pages[key].load()
+		return self.pages[key]
 		
 	def class_list(self):
 		"""
@@ -115,17 +118,55 @@ class SchoolLoop(object):
 		"""
 		Returns a list of events in the monthly calendar.
 		
-		- month: unix time that determines the month and year of the calendar
+		- month: i don't even know what this does.
 		"""
 		events = []
-		# TODO: implement this
+		
+		# show all events
+		if 'calendar' not in self.pages:
+			self.lrHandler.mode = 2
+			self.opener.open(self.get_url('/calendar/setCalendarSettings'),
+				'assigned=true&due=true&public=true&ugroups=true&uevents=true&x=0&y=0')
+			self.lrHandler.mode = 0
+		
+		# stupid time zones
+		if not self.timezone:
+			soup = self.page('calendar').soup
+			
+			nowDate = int(soup.find('span', {'style': 'color : #AA0000;'}).string)
+			
+			nowTime = (lambda x: sum(x) / len(x))([int(re.search('month_id=(\d+)', y['href']).group(1))
+				for y in soup.findAll(lambda x: x.name == "a" and
+				x.has_key('href') and re.search('month_id=[^0]', x['href']))]) / 1000
+			
+			dt = datetime.datetime.utcfromtimestamp(nowTime)
+			
+			# too lazy to think T_T
+			if nowDate < 15 and dt.day > 15:
+				nowYearMonth = (dt.year * 12) + dt.month + 1
+			elif nowDate > 15 and dt.day < 15:
+				nowYearMonth = (dt.year * 12) + dt.month - 1
+			else
+				nowYearMonth = (dt.year * 12) + dt.month
+			nowYearMonth -= 1
+			
+			nowDt = datetime.datetime.new (nowYearMonth / 12, (nowYearMonth % 12) + 1, nowDate)
+		
+		table = self.page('calendar').soup.find('table', {'class': 'cal_table'})
+		for td in table.findAll('td', {'class': 'cal_td'}):
+			dateSpan = td.find('span')
+			if (not dateSpan) or ('#888888' in dateSpan['style']):
+				continue
+		
 		return events
 		
 class SchoolLoopPage(object):
-	def __init__(self, loop, url):
+	def __init__(self, loop, url, params):
 		self.loop = loop
 		self.url = url
 		self.soup = None
+		if params:
+			self.url += "?" + params
 	def load(self):
 		pageHandle = self.loop.opener.open(self.loop.get_url(self.url))
 		pageData = pageHandle.read()
