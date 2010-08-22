@@ -2,4 +2,7 @@
   to check whether we've been logged out or not in each api method, and
   store the username and password so we can re-login if we do get logged
   out
-- ASK SCHOOLLOOP TO MAKE AN API
+  - Should that detection go in page()? kinda hacky but meh
+- ASK SCHOOLLOOP TO MAKE AN API (AND VISIT THEM AT THEIR OFFICES :P)
+  - So they do have an API. But we need to ask them for a public-facing
+    one and for Lowell to enable it.
