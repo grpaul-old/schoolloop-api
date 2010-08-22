@@ -2,7 +2,7 @@
 
 import re, calendar, urllib, urllib2, time, sys, os
 from BeautifulSoup import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date as datedate # date conflicts too easily
 
 PAGE_TABLE = {
 	'main' : '/portal/student_home',
@@ -191,8 +191,15 @@ class SchoolLoop(object):
 			if month > 3 and month <= 11: # DST
 				hour -= 1
 			month_id = calendar.timegm(datetime(year, month, 1, hour, 0, 0).timetuple()) * 1000
-			
-		table = self.page('calendar', 'month_id=%d' % month_id if month_id else None).soup.find('table', {'class': 'cal_table'})
+		
+		soup = self.page('calendar', 'month_id=%d' % month_id if month_id else None).soup
+		table = soup.find('table', {'class': 'cal_table'})
+		
+		day_id = int(re.search(r'day_id=(\d+)', table.findAll('td', {'class': 'cal_td'})[15].a['href']).group(1)) / 1000
+		dt = datetime.utcfromtimestamp(day_id)
+		year = dt.year
+		month = dt.month
+		
 		for td in table.findAll('td', {'class': 'cal_td'}):
 			dateSpan = td.find('span')
 			if (not dateSpan) or ('#888888' in dateSpan['style']):
@@ -210,7 +217,7 @@ class SchoolLoop(object):
 				if div.b:
 					course = div.b.string
 				
-				events.append((id, course, desc))
+				events.append((datedate(year, month, date), id, course, desc))
 		
 		return events
 		
