@@ -184,6 +184,11 @@ class SchoolLoop(object):
 					dst = True
 			elif month > 3 and month < 11:
 				dst = True
+			
+			self.timezone = -dt.hour
+			if dst: offset -= 1
+		
+		print self.timezone
 		
 		table = self.page('calendar').soup.find('table', {'class': 'cal_table'})
 		for td in table.findAll('td', {'class': 'cal_td'}):
@@ -235,7 +240,7 @@ def main(args):
 		default=False,
 		help="Print list of files in the dropbox.")
 	parser.add_option("-e", "--events",
-		action="store",
+		action="store_true",
 		dest="calendar",
 		default=False,
 		help="Print calendar.")
@@ -257,7 +262,7 @@ def main(args):
 	
 	if options.classes: print s.class_list()
 	if options.dropbox: print s.dropbox_files()
-	if options.calendar: print s.calendar(int(options.calendar))
+	if options.calendar: print s.calendar(0, 0)
 	if options.assignments: print s.assignment_list()
 
 if __name__ == "__main__":
