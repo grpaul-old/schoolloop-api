@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import re, calendar, urllib, urllib2, time, sys, os
+import re, cookielib, threading, calendar, urllib, urllib2, time, sys, os
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime, date as datedate # date conflicts too easily
 
@@ -10,13 +10,23 @@ PAGE_TABLE = {
 	'calendar' : '/calendar/month'
 }
 
+class PickleJar(cookielib.CookieJar, object):
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		del state['_cookies_lock']
+		return state
+	def __setstate__(self, state):
+		self.__dict__ = state
+		self._cookies_lock = threading.RLock()
+
 class SchoolLoop(object):
-	def __init__ (self, subdomain, https=True):
+	def __init__ (self, subdomain, https=True, cookiejar=None):
 		"""
 		Initializes the SchoolLoop object.
 		
 		- subdomain: subdomain on Schoolloop website (https://<subdomain>.schoolloop.com/)
 		- https: set to False to disable https, enables debugging via Wireshark, etc.
+		- cookiejar: cookiejar from previous session to speed up login
 		"""
 	
 		# schoolloop is so slow we can't waste time on unnecessary redirects
@@ -36,14 +46,18 @@ class SchoolLoop(object):
 				else:
 					return super(LoginRedirectHandler, self).redirect_request(*args)
 			def lr_open (self, req):
-				return req.get_selector()[1:]
+				return urllib.unquote (req.get_selector()[1:])
 		
 		self.https = https
 		self.subdomain = subdomain
 		self.cache = {}
-		self.lrHandler = LoginRedirectHandler()
-		self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(), self.lrHandler)
 		self.pages = {}
+		self.lrHandler = LoginRedirectHandler()
+		
+		self.cookiejar = cookiejar
+		if self.cookiejar is None:
+			self.cookiejar = PickleJar()
+		self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar), self.lrHandler)
 		
 		self.timezone = None
 			
@@ -69,8 +83,14 @@ class SchoolLoop(object):
 		self.lrHandler.mode = 0
 		
 		return loginTry == "success"
-		
-	def page(self, page, params=None):
+	
+	def login_status (self):
+		"""
+		Check if logged in.
+		"""
+		return bool(self.page('main', cache=False).soup)
+	
+	def page(self, page, params=None, cache=True):
 		"""
 		Fetches a page from Schoolloop, caches it, and returns a SchoolLoopPage object.
 		
@@ -78,7 +98,7 @@ class SchoolLoop(object):
 		- params: GET params
 		"""
 		key = (page, params)
-		if key in self.pages: return self.pages[key]
+		if cache and key in self.pages: return self.pages[key]
 		self.pages[key] = SchoolLoopPage(self, PAGE_TABLE[page], params)
 		self.pages[key].load()
 		return self.pages[key]
@@ -233,7 +253,13 @@ class SchoolLoopPage(object):
 		if params:
 			self.url += "?" + params
 	def load(self):
+		self.loop.lrHandler.mode = 2
 		pageHandle = self.loop.opener.open(self.loop.get_url(self.url))
+		self.loop.lrHandler.mode = 0
+		
+		if isinstance (pageHandle, str):
+			return
+		
 		pageData = pageHandle.read()
 		pageHandle.close()
 		del pageHandle
