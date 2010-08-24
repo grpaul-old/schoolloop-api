@@ -53,7 +53,7 @@ class SchoolLoop(object):
 		
 		- path: path to be converted to a URL
 		"""
-		return '%s://%s.schoolloop.com%s' % ('https' if self.https else 'http', self.subdomain, path)
+		return '%s://%s.schoolloop.com%s' % (self.https and 'https' or 'http', self.subdomain, path)
 		
 	def login (self, user, pswd):
 		"""
@@ -130,11 +130,12 @@ class SchoolLoop(object):
 		for row in table.findAll('tr'):
 			cells = row.findAll('td')
 			cells.pop(2); cells.pop(4)
+
+			status = ''
+			if cells[0].img:
+				src = cells[0].img['src']
+				status = ('new.gif' in src and 'new') or ('due.gif' in src and 'due') or ''
 			
-			status = ('' if not cells[0].img else
-			         'new' if cells[0].img['src'] == "https://cdn.schoolloop.com/1008131238/img/new.gif" 
-			    else 'due' if cells[0].img['src'] == "https://cdn.schoolloop.com/1008131238/img/due.gif"
-			    else '')
 			title = (cells[1].div.a['href'], cells[1].div.a.string)
 			cls = cells[2].div.string; cls = cls[:cls.rfind("Period") - 1]
 			date = datetime.strptime(cells[3].div.string, '%m/%d/%y').date()
@@ -195,7 +196,7 @@ class SchoolLoop(object):
 				hour -= 1
 			month_id = calendar.timegm(datetime(year, month, 1, hour, 0, 0).timetuple()) * 1000
 		
-		soup = self.page('calendar', 'month_id=%d' % month_id if month_id else None).soup
+		soup = self.page('calendar', month_id and ('month_id=%d' % month_id) or None).soup
 		table = soup.find('table', {'class': 'cal_table'})
 		
 		day_id = int(re.search(r'day_id=(\d+)', table.findAll('td', {'class': 'cal_td'})[15].a['href']).group(1)) / 1000
