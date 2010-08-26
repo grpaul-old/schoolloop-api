@@ -158,7 +158,7 @@ class SchoolLoop(object):
 			
 			title = (cells[1].div.a['href'], cells[1].div.a.string)
 			cls = cells[2].div.string; cls = cls[:cls.rfind("Period") - 1]
-			date = time.strptime(cells[3].div.string, '%m/%d/%y').date()
+			date = datetime.strptime(cells[3].div.string, '%m/%d/%y').date()
 			
 			assignments.append((status, title, cls, date))
 		return assignments
