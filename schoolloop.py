@@ -106,7 +106,7 @@ class SchoolLoop(object):
 	def class_list(self):
 		"""
 		Returns the list of classes as a list of tuples in the format
-		of (course_group_id, course_name).
+		of (course_group_id, course_name, grade).
 		"""
 		classes = []
 		table = self.page('main').soup.find('tbody', { 'class' : 'hub_general_body' })
