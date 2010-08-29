@@ -112,11 +112,15 @@ class SchoolLoop(object):
 		table = self.page('main').soup.find('tbody', { 'class' : 'hub_general_body' })
 		for row in table.findAll('tr'):
 			anchor = row.find('td', {'class': 'left'}).a
-			if anchor:
+			gradecell = [x for x in row.contents if type(x).__name__ == "Tag"][1]
+			if anchor and gradecell:
 				course_group_id = re.search(r'group_id=(\d+)', anchor['href']).group (1)
 				course_name = anchor.string
+				grade = ''
+				if gradecell['class'] == "list_text" and not gradecell.a:
+					grade = gradecell.contents[1]
 				if course_group_id and course_name:
-					classes.append ((course_group_id, course_name))
+					classes.append ((course_group_id, course_name, grade))
 		return classes
 	
 	def dropbox_files(self):
